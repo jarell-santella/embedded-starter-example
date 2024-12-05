@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 #import chardet
 import os
-import sys 
+import sys
 import time
 import logging
 import spidev as SPI
@@ -14,8 +14,8 @@ from PIL import Image,ImageDraw,ImageFont
 RST = 27
 DC = 25
 BL = 18
-bus = 0 
-device = 0 
+bus = 0
+device = 0
 logging.basicConfig(level=logging.DEBUG)
 try:
     # display with hardware SPI:
@@ -65,20 +65,20 @@ try:
     draw.rectangle([(0,115),(190,160)],fill = "RED")
     draw.text((5, 118), 'WaveShare', fill = "WHITE",font=Font2)
     draw.text((5, 160), '1234567890', fill = "GREEN",font=Font3)
-    text= u"微雪电子"
+    text="SPI test"
     draw.text((5, 200),text, fill = "BLUE",font=Font3)
     im_r=image1.rotate(270)
     disp.ShowImage(im_r)
     time.sleep(3)
     logging.info("show image")
-    image = Image.open('../pic/LCD_1inch54.jpg')	
+    image = Image.open('../pic/LCD_1inch54.jpg')
     im_r=image.rotate(270)
     disp.ShowImage(im_r)
     time.sleep(3)
     disp.module_exit()
     logging.info("quit:")
 except IOError as e:
-    logging.info(e)    
+    logging.info(e)
 except KeyboardInterrupt:
     disp.module_exit()
     logging.info("quit:")
