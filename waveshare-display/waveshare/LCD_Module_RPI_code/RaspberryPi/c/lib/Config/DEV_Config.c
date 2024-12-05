@@ -1,10 +1,10 @@
 /*****************************************************************************
-* | File      	:   DEV_Config.c
+* | File        :   DEV_Config.c
 * | Author      :   Waveshare team
 * | Function    :   Hardware underlying interface
 * | Info        :
 *----------------
-* |	This version:   V2.0
+* | This version:   V2.0
 * | Date        :   2019-07-08
 * | Info        :   Basic version
 *
@@ -12,99 +12,82 @@
 #include "DEV_Config.h"
 
 #if USE_DEV_LIB
-int GPIO_Handle;
+#include <lgpio.h>
+
+int GPIO_Handle1;
+int GPIO_Handle2;
 int SPI_Handle;
 
-// BRIAN: Removed; don't want to PWM the screen?
-// pthread_t *t1;
-// UWORD pwm_dule=100; // 1040
-// void *BL_PWM(void *arg){
-// 	UWORD i=0;
-// 	for(i=0;;i++){
-// 		if(i>64)i=0;
-// 		if(i<(pwm_dule/16))lgGpioWrite(GPIO_Handle, 18, LG_HIGH);
-// 		else lgGpioWrite(GPIO_Handle, 18, LG_LOW);	
-//     }
-	
-// }
+typedef struct {
+    int gpiochip;   // The GPIO chip number (e.g., 1, 2)
+    int handle;     // The GPIO handle, after being claimed
+    int line;       // The line number within the gpiochip
+} DEV_GPIO_Pin;
+
+// Define the GPIO pins based on your BeagleY-AI mappings
+DEV_GPIO_Pin LCD_DC_PIN  = {1, -1, 42}; // DS is GPIO25 on gpiochip1 line 42
+DEV_GPIO_Pin LCD_RST_PIN = {1, -1, 33}; // RST is GPIO27 on gpiochip1 line 33
+DEV_GPIO_Pin LCD_BL_PIN  = {2, -1, 11}; // BL is GPIO18 on gpiochip2 line 11
+
+// Define the Pin constants
+#define LCD_RST 1
+#define LCD_DC  2
+#define LCD_BL  3
+
+// Array to map Pin constants to DEV_GPIO_Pin structures
+DEV_GPIO_Pin* DEV_GPIOS[4]; // Index 0 unused
+
 #endif
 
 void DEV_SetBacklight(UWORD Value)
 {
-	
-#ifdef USE_BCM2835_LIB
-    bcm2835_pwm_set_data(0,Value);
-    
-#elif USE_WIRINGPI_LIB
-    pwmWrite(LCD_BL,Value);
-    
-#elif USE_DEV_LIB 
-    // BRIAN: REMOVED
-	// pwm_dule=Value;
-    
+#ifdef USE_DEV_LIB
+    DEV_Digital_Write(LCD_BL, Value);
 #endif
-	
 }
 
 /*****************************************
-                GPIO
+                    GPIO
 *****************************************/
 void DEV_Digital_Write(UWORD Pin, UBYTE Value)
 {
-#ifdef USE_BCM2835_LIB
-    bcm2835_gpio_write(Pin, Value);
-    
-#elif USE_WIRINGPI_LIB
-    digitalWrite(Pin, Value);
-
-#elif  USE_DEV_LIB  
-    lgGpioWrite(GPIO_Handle, Pin, Value);
-    
+#ifdef USE_DEV_LIB
+    DEV_GPIO_Pin* gpio_pin = DEV_GPIOS[Pin];
+    if (gpio_pin == NULL) {
+        printf("Invalid GPIO Pin: %d\n", Pin);
+        return;
+    }
+    lgGpioWrite(gpio_pin->handle, gpio_pin->line, Value);
 #endif
 }
 
 UBYTE DEV_Digital_Read(UWORD Pin)
 {
     UBYTE Read_value = 0;
-#ifdef USE_BCM2835_LIB
-    Read_value = bcm2835_gpio_lev(Pin);
-    
-#elif USE_WIRINGPI_LIB
-    Read_value = digitalRead(Pin);
-
-#elif  USE_DEV_LIB  
-    Read_value = lgGpioRead(GPIO_Handle,Pin);
-
+#ifdef USE_DEV_LIB
+    DEV_GPIO_Pin* gpio_pin = DEV_GPIOS[Pin];
+    if (gpio_pin == NULL) {
+        printf("Invalid GPIO Pin: %d\n", Pin);
+        return 0;
+    }
+    Read_value = lgGpioRead(gpio_pin->handle, gpio_pin->line);
 #endif
     return Read_value;
 }
 
 void DEV_GPIO_Mode(UWORD Pin, UWORD Mode)
 {
-#ifdef USE_BCM2835_LIB  
-    if(Mode == 0 || Mode == BCM2835_GPIO_FSEL_INPT){
-        bcm2835_gpio_fsel(Pin, BCM2835_GPIO_FSEL_INPT);
-    }else {
-        bcm2835_gpio_fsel(Pin, BCM2835_GPIO_FSEL_OUTP);
+#ifdef USE_DEV_LIB
+    DEV_GPIO_Pin* gpio_pin = DEV_GPIOS[Pin];
+    if (gpio_pin == NULL) {
+        printf("Invalid GPIO Pin: %d\n", Pin);
+        return;
     }
-#elif USE_WIRINGPI_LIB
-    if(Mode == 0 || Mode == INPUT){
-        pinMode(Pin, INPUT);
-        pullUpDnControl(Pin, PUD_UP);
-    }else{ 
-        pinMode(Pin, OUTPUT);
-        // printf (" %d OUT \r\n",Pin);
-    }
-
-#elif  USE_DEV_LIB  
     if(Mode == 0 || Mode == LG_SET_INPUT){
-        lgGpioClaimInput(GPIO_Handle,LFLAGS,Pin);
-        // printf("IN Pin = %d\r\n",Pin);
-    }else{
-        lgGpioClaimOutput(GPIO_Handle, LFLAGS, Pin, LG_LOW);
-        // printf("OUT Pin = %d\r\n",Pin);
+        lgGpioClaimInput(gpio_pin->handle, LFLAGS, gpio_pin->line);
+    } else {
+        lgGpioClaimOutput(gpio_pin->handle, LFLAGS, gpio_pin->line, LG_LOW);
     }
-
 #endif   
 }
 
@@ -113,14 +96,8 @@ void DEV_GPIO_Mode(UWORD Pin, UWORD Mode)
 **/
 void DEV_Delay_ms(UDOUBLE xms)
 {
-#ifdef USE_BCM2835_LIB
-    bcm2835_delay(xms);
-#elif USE_WIRINGPI_LIB
-    delay(xms);
-
-#elif  USE_DEV_LIB  
+#ifdef USE_DEV_LIB  
     lguSleep(xms/1000.0);
-
 #endif
 }
 
@@ -128,146 +105,81 @@ static void DEV_GPIO_Init(void)
 {
     DEV_GPIO_Mode(LCD_RST, 1);
     DEV_GPIO_Mode(LCD_DC, 1);
-    // DEV_GPIO_Mode(LCD_BL, 1);
-    
-    // DEV_GPIO_Mode(KEY_UP_PIN, 0);
-    // DEV_GPIO_Mode(KEY_DOWN_PIN, 0);
-    // DEV_GPIO_Mode(KEY_LEFT_PIN, 0);
-    // DEV_GPIO_Mode(KEY_RIGHT_PIN, 0);
-    // DEV_GPIO_Mode(KEY_PRESS_PIN, 0);
-    // DEV_GPIO_Mode(KEY1_PIN, 0);
-    // DEV_GPIO_Mode(KEY2_PIN, 0);
-    // DEV_GPIO_Mode(KEY3_PIN, 0);
-	// LCD_BL_1;
-    
+    DEV_GPIO_Mode(LCD_BL, 1);
 }
-/******************************************************************************
-function:	Module Initialize, the library and initialize the pins, SPI protocol
-parameter:
-Info:
-******************************************************************************/
+
 UBYTE DEV_ModuleInit(void)
 {
-    printf("Enterenig DEV_ModuleInit...\n");
+    printf("Entering DEV_ModuleInit...\n");
 
- #ifdef USE_BCM2835_LIB
-    printf("  --> BCM2835 lib\n");
-    if(!bcm2835_init()) {
-        printf("bcm2835 init failed  !!! \r\n");
-        return 1;
-    } else {
-        printf("bcm2835 init success !!! \r\n");
-    }
-    DEV_GPIO_Init();
-    bcm2835_spi_begin();                                         //Start spi interface, set spi pin for the reuse function
-    bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);     //High first transmission
-    bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                  //spi mode 0
-    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_32);  //Frequency
-    bcm2835_spi_chipSelect(BCM2835_SPI_CS0);                     //set CE0
-    bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);     //enable cs0
-	
-	bcm2835_gpio_fsel(LCD_BL, BCM2835_GPIO_FSEL_ALT5);
-    bcm2835_pwm_set_clock(BCM2835_PWM_CLOCK_DIVIDER_16);
-    
-	bcm2835_pwm_set_mode(0, 1, 1);
-    bcm2835_pwm_set_range(0,1024);
-	bcm2835_pwm_set_data(0,512);
-	
-#elif USE_WIRINGPI_LIB  
-    printf("  --> WIRINGPI lib\n");
-    //if(wiringPiSetup() < 0)//use wiringpi Pin number table  
-    if(wiringPiSetupGpio() < 0) { //use BCM2835 Pin number table
-        DEBUG("set wiringPi lib failed	!!! \r\n");
-        return 1;
-    } else {
-        DEBUG("set wiringPi lib success  !!! \r\n");
-    }
-    DEV_GPIO_Init();
-    wiringPiSPISetup(0,25000000);
-	pinMode (LCD_BL, PWM_OUTPUT);
-    pwmWrite(LCD_BL,512);
+#ifdef USE_DEV_LIB
+    printf("  --> USE_DEV_LIB\n");
 
-#elif  USE_DEV_LIB
-    printf("  --> DEV_LIB\n");
-
-    printf("--> OPENING GPIO BANK 0...\n");
-    GPIO_Handle = lgGpiochipOpen(1);
-    if (GPIO_Handle < 0)
+    // Open gpiochip1
+    printf("--> OPENING GPIO BANK 1...\n");
+    GPIO_Handle1 = lgGpiochipOpen(1);
+    if (GPIO_Handle1 < 0)
     {
-        DEBUG( "gpiochip0 Export Failed\n");
+        printf("gpiochip1 Export Failed\n");
         return -1;
     }
 
-    // lgSpiOpen(SPI device, SPI channel, Baud, Flags)
-    // SPI_Handle = lgSpiOpen(0, 0, 25000000, 0);// ORIGINAL
+    // Open gpiochip2
+    printf("--> OPENING GPIO BANK 2...\n");
+    GPIO_Handle2 = lgGpiochipOpen(2);
+    if (GPIO_Handle2 < 0)
+    {
+        printf("gpiochip2 Export Failed\n");
+        return -1;
+    }
+
+    // Assign handles to pins
+    LCD_DC_PIN.handle  = GPIO_Handle1;
+    LCD_RST_PIN.handle = GPIO_Handle1;
+    LCD_BL_PIN.handle  = GPIO_Handle2;
+
+    // Initialize the DEV_GPIOS array
+    DEV_GPIOS[LCD_RST] = &LCD_RST_PIN;
+    DEV_GPIOS[LCD_DC]  = &LCD_DC_PIN;
+    DEV_GPIOS[LCD_BL]  = &LCD_BL_PIN;
+
+    // Open SPI channel
     SPI_Handle = lgSpiOpen(0, 0, 25000000, 0);
     printf("  --> SPI Handle: %d\n", SPI_Handle);
     if (SPI_Handle < 0) {
-        DEBUG("Unable to open SPI channel via lgSpiOpen. Handle = %d\n", SPI_Handle);
+        printf("Unable to open SPI channel via lgSpiOpen. Handle = %d\n", SPI_Handle);
         perror("Unable to open SPI");
         return -1;
     }
     DEV_GPIO_Init();
 
-    // BRIAN: Don't PWM BL
-    // t1 = lgThreadStart(BL_PWM, "thread 1");
 #else
     printf("  --> OOPS!\n");
-#error "BOGUS"
 #endif
-    // BRIAN NOTE: THIS WORKS
-    // printf("TESTING CS GPIO: \n");
-    // for (int i = 0; i < 10; i++) {
-    //     DEV_Digital_Write(30, 1);
-    //     DEV_Digital_Write(30, 0);
-    // }
 
-    printf("  --> Done DEV_moduleInit()\n");
+    printf("  --> Done DEV_ModuleInit()\n");
     return 0;
 }
 
 void DEV_SPI_WriteByte(uint8_t Value)
 {
-#ifdef USE_BCM2835_LIB
-    bcm2835_spi_transfer(Value);
-    
-#elif USE_WIRINGPI_LIB
-    wiringPiSPIDataRW(0,&Value,1);
-
-#elif  USE_DEV_LIB 
-    lgSpiWrite(SPI_Handle,(char*)&Value, 1);
-    
+#ifdef USE_DEV_LIB 
+    lgSpiWrite(SPI_Handle, (char*)&Value, 1);
 #endif
 }
 
 void DEV_SPI_Write_nByte(uint8_t *pData, uint32_t Len)
 {
-#ifdef USE_BCM2835_LIB
-    uint8_t rData[Len];
-    bcm2835_spi_transfernb((char *)pData,(char *)rData,Len);
-    
-#elif USE_WIRINGPI_LIB
-    wiringPiSPIDataRW(0, (unsigned char *)pData, Len);
-
-#elif  USE_DEV_LIB 
-    lgSpiWrite(SPI_Handle,(char*) pData, Len);
-
+#ifdef USE_DEV_LIB 
+    lgSpiWrite(SPI_Handle, (char*)pData, Len);
 #endif
 }
 
-/******************************************************************************
-function:	Module exits, closes SPI and BCM2835 library
-parameter:
-Info:
-******************************************************************************/
 void DEV_ModuleExit(void)
 {
-#ifdef USE_BCM2835_LIB
-    bcm2835_spi_end();
-    bcm2835_close();
-#elif USE_WIRINGPI_LIB
-
-#elif USE_DEV_LIB 
-
+#ifdef USE_DEV_LIB 
+    lgSpiClose(SPI_Handle);
+    lgGpiochipClose(GPIO_Handle1);
+    lgGpiochipClose(GPIO_Handle2);
 #endif
 }

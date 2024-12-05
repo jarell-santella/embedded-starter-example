@@ -1,10 +1,10 @@
 /*****************************************************************************
-* | File      	:   DEV_Config.h
+* | File        :   DEV_Config.h
 * | Author      :   Waveshare team
 * | Function    :   Hardware underlying interface
 * | Info        :
 *----------------
-* |	This version:   V2.0
+* | This version:   V2.0
 * | Date        :   2019-07-08
 * | Info        :   Basic version
 *
@@ -13,9 +13,6 @@
 #define _DEV_CONFIG_H_
 
 #include "Debug.h"
-
-// ADDED BY BRIAN -- so VS Code shows syntax highlighting for correctly defined values.
-#define USE_DEV_LIB 1
 
 #ifdef USE_BCM2835_LIB
     #include <bcm2835.h>
@@ -34,61 +31,33 @@
 #include <string.h>
 #include <stdint.h>
 
-
-
 /**
- * data
+ * Data types
 **/
 #define UBYTE   uint8_t
 #define UWORD   uint16_t
 #define UDOUBLE uint32_t
 
-// BRIAN: Changed from these (RPi values?)
-// -- ORIGINAL FOR RPi --
-// #define LCD_RST  27
-// #define LCD_DC   25
-// #define LCD_BL   18
-// -- BRIAN: Works --
-// #define LCD_RST  31     // P9.13    
-// #define LCD_DC   30     // P9.11
-// -->REMOVE #define LCD_BL   60     // 3.3v   (Display shows nothing unless BL enabled)
+/*----------------------------------------------------------------------
+Define the pin constants to match those in DEV_Config.c
+----------------------------------------------------------------------*/
 
-// -- BRIAN: Free up P9.11/P9.13 for serial port
-// SET PORT NUMBER in DEV_Config.c::DEV_ModuleInit, GPIO_Handle = lgGpiochipOpen(1);
-#define LCD_RST  (51-32)     // P9.16  (GPIO Bank 1, so minus 32 for pin offset)
-#define LCD_DC   (50-32)     // P9.14  (GPIO Bank 1, so minus 32 for pin offset)
+// Pin constants (should match those in DEV_Config.c)
+#define LCD_RST 1
+#define LCD_DC  2
+#define LCD_BL  3
 
+// Control macros for the LCD pins
+#define LCD_RST_0       DEV_Digital_Write(LCD_RST, 0)
+#define LCD_RST_1       DEV_Digital_Write(LCD_RST, 1)
 
+#define LCD_DC_0        DEV_Digital_Write(LCD_DC, 0)
+#define LCD_DC_1        DEV_Digital_Write(LCD_DC, 1)
 
-//LCD
+#define LCD_BL_0        DEV_Digital_Write(LCD_BL, 0)
+#define LCD_BL_1        DEV_Digital_Write(LCD_BL, 1)
 
-#define LCD_RST_0		DEV_Digital_Write(LCD_RST,0)
-#define LCD_RST_1		DEV_Digital_Write(LCD_RST,1)
-
-#define LCD_DC_0		DEV_Digital_Write(LCD_DC,0)
-#define LCD_DC_1		DEV_Digital_Write(LCD_DC,1)
-
-#define LCD_BL_0		// TODO: REMOVE
-#define LCD_BL_1		// TODO: REMOVE
-
-// #define KEY_UP_PIN      6
-// #define KEY_DOWN_PIN    19
-// #define KEY_LEFT_PIN    5
-// #define KEY_RIGHT_PIN   26
-// #define KEY_PRESS_PIN   13
-// #define KEY1_PIN        21
-// #define KEY2_PIN        20
-// #define KEY3_PIN        16
-
-// #define GET_KEY_UP       		DEV_Digital_Read(KEY_UP_PIN)
-// #define GET_KEY_DOWN     		DEV_Digital_Read(KEY_DOWN_PIN)
-// #define GET_KEY_LEFT     		DEV_Digital_Read(KEY_LEFT_PIN)
-// #define GET_KEY_RIGHT    		DEV_Digital_Read(KEY_RIGHT_PIN)
-// #define GET_KEY_PRESS    		DEV_Digital_Read(KEY_PRESS_PIN)
-// #define GET_KEY1         		DEV_Digital_Read(KEY1_PIN)
-// #define GET_KEY2         		DEV_Digital_Read(KEY2_PIN)
-// #define GET_KEY3         		DEV_Digital_Read(KEY3_PIN)
-
+// Backlight control
 #define LCD_SetBacklight(Value) DEV_SetBacklight(Value)
 
 /*------------------------------------------------------------------------------------------------------*/
@@ -103,4 +72,5 @@ void DEV_Delay_ms(UDOUBLE xms);
 void DEV_SPI_WriteByte(UBYTE Value);
 void DEV_SPI_Write_nByte(uint8_t *pData, uint32_t Len);
 void DEV_SetBacklight(UWORD Value);
+
 #endif
