@@ -1,3 +1,33 @@
+# BeagleY-AI Usage
+
+Assumptions:
+- Hardware connections are correct.
+- Current working directory is the same location as the parent folder of this README file.
+
+Enable permissions for SPI:
+```bash
+sudo chmod ugo+rwx /dev/spidev*
+```
+
+Go into C code directory:
+```bash
+cd waveshare/LCD_Module_RPI_code/RaspberryPi/c
+```
+
+Run the Makefile:
+```bash
+make
+```
+
+Make binary executable:
+```bash
+sudo chmod +x main
+```
+
+Run executable:
+```bash
+./main
+```
 
 * Using SPI0
 * Enable in /boot/uEnv.txt
