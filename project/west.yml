@@ -1,0 +1,29 @@
+# Copyright (c) 2024 Ayush Singh <ayush@beagleboard.org>
+# SPDX-License-Identifier: Apache-2.0
+
+manifest:
+  self:
+    west-commands: scripts/west-commands.yml
+
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+    - name: beagley-ai-zephyr
+      url-base: https://openbeagle.org/beagley-ai/zephyr
+    - name: micropython
+      url-base: https://github.com/micropython
+
+  projects:
+    - name: zephyr
+      remote: beagley-ai-zephyr
+      revision: beagley-ai-dev
+      import:
+        name-allowlist:
+          - hal_ti
+          - cmsis
+          - open-amp
+          - libmetal
+    - name: micropython
+      remote: beagley-ai-zephyr
+      revision: beagley-ai-dev
+      path: modules/lib/micropython

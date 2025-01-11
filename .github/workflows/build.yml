@@ -10,6 +10,9 @@ jobs:
       options: --privileged
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Set Up and Build
         run: |
           west init -l project
