@@ -12,7 +12,6 @@ jobs:
     steps:
       - name: Set Up and Build
         run: |
-          rm -rf ../.west .west
           west init -l project
           west update
           west zephyr-export
