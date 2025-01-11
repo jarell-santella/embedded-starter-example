@@ -1,0 +1,33 @@
+name: Build Zephyr Projects
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: zephyrprojectrtos/zephyr-build:v0.26.13
+      options: --privileged
+
+    steps:
+      - name: Set Up and Build
+        run: |
+          rm -rf ../.west .west
+          west init -l project
+          west update
+          west zephyr-export
+          sudo apt-get update && sudo apt-get install -y python3.10-venv
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip3 install -r zephyr/scripts/requirements-base.txt
+          source zephyr/zephyr-env.sh
+          west build -d build/micropython -b beagley_ai/j722s/main_r5f0_0 modules/lib/micropython/ports/zephyr -p
+          west build -d build/hello -b beagley_ai/j722s/main_r5f0_0 zephyr/samples/hello_world -p
+          west build -d build/blinky -b beagley_ai/j722s/main_r5f0_0 zephyr/samples/blinky -p
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: zephyr-builds
+          path: |
+            build/*/zephyr/*.elf
